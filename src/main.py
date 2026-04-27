@@ -1,3 +1,5 @@
+print("Teste")
+
 import network
 import dht
 import machine
@@ -54,7 +56,6 @@ def publicar_telemetria_fast(temperatura, umidade, estado_servo):
 
 def executar_sistema():
     #gerenciar_wifi()
-    print("Teste")
     # Executa apenas 1 ciclo para garantir o sucesso antes dos 10 segundos[cite: 1]
     try:
         sensor_clima.measure()
