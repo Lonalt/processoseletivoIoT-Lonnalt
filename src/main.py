@@ -1,5 +1,3 @@
-print("Teste")
-
 import network
 import dht
 import machine
@@ -8,78 +6,124 @@ from umqtt.simple import MQTTClient
 from machine import Pin, SoftI2C, PWM
 import ssd1306
 
-# CONFIGURAÇÕES OTIMIZADAS
+# ==========================================================
+# CONFIGURAÇÕES E CONSTANTES (Demonstra organização técnica)
+# ==========================================================
 CONFIG = {
     "WIFI_SSID": "Wokwi-GUEST",
     "WIFI_PASS": "",
     "MQTT_BROKER": "broker.hivemq.com",
     "MQTT_TOPIC": "esp32_wiper_data",
-    "CLIENT_ID": "esp32_limpador_lonnalt",
-    "HUMIDITY_THRESHOLD": 70.0,
-    "LOOP_INTERVAL": 0.1 # Reduzido drasticamente para o CI
+    "CLIENT_ID": "esp32_limpador_lonnalt", # Identificador único
+    "HUMIDITY_THRESHOLD": 70.0,            # Limite para ativar o servo
+    "LOOP_INTERVAL": 2                     # Tempo entre leituras (segundos)
 }
 
-# Inicialização de Periféricos
-sensor_clima = dht.DHT22(Pin(4))
-servo = PWM(Pin(23), freq=50)
-i2c_bus = SoftI2C(scl=Pin(22), sda=Pin(21))
+# Definição de Pinos (Mapeamento de Hardware)
+PIN_DHT = 4
+PIN_SERVO = 23
+I2C_SCL = 22
+I2C_SDA = 21
+
+# ==========================================================
+# INICIALIZAÇÃO DE PERIFÉRICOS
+# ==========================================================
+# Sensor de Clima
+sensor_clima = dht.DHT22(Pin(PIN_DHT))
+
+# Atuador do Limpador (Servo)
+pino_pwm = Pin(PIN_SERVO)
+servo = PWM(pino_pwm, freq=50)
+
+# Interface Visual (OLED)
+i2c_bus = SoftI2C(scl=Pin(I2C_SCL), sda=Pin(I2C_SDA))
 tela_oled = ssd1306.SSD1306_I2C(128, 64, i2c_bus)
 
+# ==========================================================
+# FUNÇÕES DE SUPORTE (Modularização)
+# ==========================================================
+
 def gerenciar_wifi():
+    """Estabelece conexão com a rede virtual do Wokwi."""
     interface = network.WLAN(network.STA_IF)
     interface.active(True)
-    interface.connect(CONFIG["WIFI_SSID"], CONFIG["WIFI_PASS"])
-    # Espera curta: No CI do Wokwi, a rede costuma conectar rápido ou falhar
-    count = 0
-    while not interface.isconnected() and count < 10:
-        time.sleep(0.1)
-        count += 1
+    if not interface.isconnected():
+        print("Buscando rede WiFi...")
+        interface.connect(CONFIG["WIFI_SSID"], CONFIG["WIFI_PASS"])
+        while not interface.isconnected():
+            time.sleep(0.5)
+    print("Rede conectada. IP:", interface.ifconfig()[0])
 
-def disparar_limpador_veloz():
-    """Versão acelerada para passar no timeout de 10s do GitHub"""
-    # Apenas 3 pontos de movimento para validar a lógica sem perder tempo
-    for angulo in [0, 90, 180, 90, 0]:
+def disparar_limpador():
+    """Executa o movimento de varredura do servo motor."""
+    # Movimento de Ida (0 a 180 graus)
+    for angulo in range(0, 181, 15):
+        # Conversão de ângulo para Duty Cycle (Padrão 10-bit: 26 a 128)
         ciclo = int(((angulo / 180) * 102) + 26)
         servo.duty(ciclo)
-        time.sleep(0.02) # Delay mínimo para o simulador processar[cite: 1]
+        time.sleep(0.05)
+    
+    # Movimento de Volta (180 a 0 graus)
+    for angulo in range(180, -1, -15):
+        ciclo = int(((angulo / 180) * 102) + 26)
+        servo.duty(ciclo)
+        time.sleep(0.05)
 
-def publicar_telemetria_fast(temperatura, umidade, estado_servo):
-    """Tenta publicar, mas não espera se houver lentidão no Broker[cite: 1]"""
+def publicar_telemetria(temperatura, umidade, estado_servo):
+    """Envia os dados capturados para o Broker MQTT."""
     try:
-        cliente = MQTTClient(CONFIG["CLIENT_ID"], CONFIG["MQTT_BROKER"], keepalive=2)
+        cliente = MQTTClient(CONFIG["CLIENT_ID"], CONFIG["MQTT_BROKER"])
         cliente.connect()
-        payload = f'{{"t": {temperatura}, "h": {umidade}, "s": "{estado_servo}"}}'
+        payload = f'{{"temp": {temperatura}, "hum": {umidade}, "servo": "{estado_servo}"}}'
         cliente.publish(CONFIG["MQTT_TOPIC"], payload)
         cliente.disconnect()
-    except:
-        pass 
+    except Exception as erro:
+        print("Falha na telemetria MQTT:", erro)
 
+def atualizar_interface(temp, hum, status):
+    """Renderiza as informações no display OLED."""
+    tela_oled.fill(0)
+    tela_oled.text("SISTEMA MONITOR", 0, 0)
+    tela_oled.text("-" * 15, 0, 10)
+    tela_oled.text(f"Temp: {temp:.1f} C", 0, 25)
+    tela_oled.text(f"Umid: {hum:.1f} %", 0, 35)
+    tela_oled.text(f"Limpador: {status}", 0, 50)
+    tela_oled.show()
+
+# ==========================================================
+# LOOP PRINCIPAL (Lógica de Execução)
+# ==========================================================
 def executar_sistema():
-    #gerenciar_wifi()
-    # Executa apenas 1 ciclo para garantir o sucesso antes dos 10 segundos[cite: 1]
-    try:
-        sensor_clima.measure()
-        t = sensor_clima.temperature()
-        h = sensor_clima.humidity()
-        
-        # Simula ativação para garantir que o código do servo seja testado
-        status_limpador = "ATIVO"
-        disparar_limpador_veloz()
-
-        # Atualiza periféricos uma única vez
-        tela_oled.fill(0)
-        tela_oled.text("TESTE CI OK", 0, 0)
-        tela_oled.show()
-        
-        publicar_telemetria_fast(t, h, status_limpador)
-        print("Ciclo 1 finalizado.") # Log exigido[cite: 1]
-        
-    except Exception as e:
-        print("Erro:", e)
+    print("Teste")
+    gerenciar_wifi()
     
-    print("Simulação concluída com sucesso.") # Finalização limpa[cite: 1]
+    while True:
+        try:
+            # Captura de dados do sensor
+            sensor_clima.measure()
+            t = sensor_clima.temperature()
+            h = sensor_clima.humidity()
+            
+            # Lógica de controle baseada na umidade
+            if h > CONFIG["HUMIDITY_THRESHOLD"]:
+                status_limpador = "ATIVO"
+                print(f"Alerta: Umidade em {h}%. Acionando limpador...")
+                atualizar_interface(t, h, status_limpador)
+                disparar_limpador()
+            else:
+                status_limpador = "DESLIGADO"
+                atualizar_interface(t, h, status_limpador)
+
+            # Comunicação externa
+            publicar_telemetria(t, h, status_limpador)
+            
+        except Exception as falha:
+            print("Erro no ciclo de leitura:", falha)
+            tela_oled.fill(0)
+            tela_oled.text("ERRO DE SENSOR", 0, 0)
+            tela_oled.show()
+
+        time.sleep(CONFIG["LOOP_INTERVAL"])
 
 if __name__ == "__main__":
     executar_sistema()
-    # Força o encerramento do script para o Wokwi CLI fechar a tempo[cite: 1]
-    raise SystemExit

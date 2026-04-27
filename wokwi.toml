@@ -1,3 +1,4 @@
 [wokwi]
 version = 1
-firmware = "src/main.py"
+firmware = "flasher_args.json"
+rfc2217ServerPort = 4000
