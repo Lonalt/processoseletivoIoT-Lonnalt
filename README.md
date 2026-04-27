@@ -31,6 +31,7 @@ A arquitetura lógica foi projetada para ser modular e resiliente, operando em u
     5.  Atualização da interface local (OLED) e envio de dados via MQTT para o Broker HiveMQ.
 *   **Temporizações:** Utilização de `time.sleep` para controle de frequência de amostragem e para suavização do movimento do servo motor.
 
+
 ---
 
 ### 3️⃣ Componentes Utilizados na Simulação
