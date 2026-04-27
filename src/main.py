@@ -94,6 +94,7 @@ def atualizar_interface(temp, hum, status):
 # LOOP PRINCIPAL (Lógica de Execução)
 # ==========================================================
 def executar_sistema():
+    print("Teste")
     gerenciar_wifi()
     
     while True:
