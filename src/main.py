@@ -25,6 +25,8 @@ PIN_SERVO = 23
 I2C_SCL = 22
 I2C_SDA = 21
 
+print("Teste")
+
 # ==========================================================
 # INICIALIZAÇÃO DE PERIFÉRICOS
 # ==========================================================
@@ -94,7 +96,6 @@ def atualizar_interface(temp, hum, status):
 # LOOP PRINCIPAL (Lógica de Execução)
 # ==========================================================
 def executar_sistema():
-    print("Teste")
     gerenciar_wifi()
     
     while True:
