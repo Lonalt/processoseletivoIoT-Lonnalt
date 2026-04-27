@@ -53,7 +53,7 @@ def publicar_telemetria_fast(temperatura, umidade, estado_servo):
         pass 
 
 def executar_sistema():
-    gerenciar_wifi()
+    #gerenciar_wifi()
     print("Teste")
     # Executa apenas 1 ciclo para garantir o sucesso antes dos 10 segundos[cite: 1]
     try:
@@ -81,5 +81,4 @@ def executar_sistema():
 if __name__ == "__main__":
     executar_sistema()
     # Força o encerramento do script para o Wokwi CLI fechar a tempo[cite: 1]
-    import sys
-    sys.exit()
+    raise SystemExit
